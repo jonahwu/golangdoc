@@ -1,6 +1,77 @@
 #Golang Doc
 
+#GO Programing
 
+## Transfer Type
+
+### Floating to String
+
+Here we convert a float to string as dd
+```
+    dd := fmt.Sprintf("test/%f", 0.01)
+    fmt.Println(reflect.TypeOf(dd))
+```
+Now we can check the type of dd is string by using reflect package.
+
+
+### String to Float
+
+Here we convert a string to float by using strconv lib
+
+```
+a := "3.1415"
+c, _ := strconv.ParseFloat(a, 64)
+```
+
+
+## Json, Marshal, and UnMarshal
+
+```
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+    "reflect"
+)
+//Name, Sex declaiEEEust be capital, or it will failed for using json
+type aa struct {
+    Name string `json:"name"`
+    Sex  string `json:"sex"`
+}
+
+func main() {
+    //define json
+    test := aa{}
+    test.Name = "jonah"
+    test.Sex = "male"
+    fmt.Println(reflect.TypeOf(test))
+    //convert to character
+    chartest, _ := json.Marshal(test)
+    fmt.Println(reflect.TypeOf(chartest))
+    fmt.Println("print chartest:", chartest)
+    //convert to string
+    strtest := string(chartest)
+    fmt.Println(reflect.TypeOf(strtest))
+    fmt.Println("print string:", strtest)
+    //convert char to json
+    jsontest := aa{}
+    _ = json.Unmarshal(chartest, &jsontest)
+    fmt.Println(reflect.TypeOf(jsontest))
+    fmt.Println(jsontest.Sex)
+    //convert string to json
+    jsontest1 := aa{}
+    // mention that you must trasfer to char by using Unmarshal function
+    _ = json.Unmarshal([]byte(strtest), &jsontest1)
+    fmt.Println(reflect.TypeOf(jsontest1))
+    fmt.Println(jsontest1.Sex)
+
+```
+Mention that   
+ 1. `aa struct` must be capital definition
+ 2. `Marshal` will transfer to char 
+ 3. you must be trasfered to string by using string(char)
+ 4. you can use []char(string) to trasfer to char for UnMarshal input
 
 
 #Pattern
