@@ -2,6 +2,34 @@
 
 #GO Programing
 
+
+##規範
+
+```
+var aName // private
+
+var BigBro // public
+
+var 123abc // illegal
+```
+宣告時，第一個字母是大寫表示是Public的，大家都可以存取，如果寫成小寫，就無法存取了。
+對於初學者來說，盡量養成習慣寫成大寫，減少錯誤的發生。
+有一些比較不好除錯的問題，比如
+
+```
+type aa struct {
+Name string `json:"name"`
+Age string `json:"age"`
+}
+```
+這是一個json的使用方法，如果你誤設成小寫`name and age`，這將導致無法存取json變數，導致無法預期的問題。
+FUnction的使用也是如此，所以建議，所有第一位字母皆用大寫。
+
+
+
+
+
+
 ## Transfer Type
 
 ### Floating to String
