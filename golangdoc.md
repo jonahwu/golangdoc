@@ -102,6 +102,60 @@ Mention that
  4. you can use []char(string) to trasfer to char for UnMarshal input
 
 
+## Load Config
+
+
+```
+go get github.com/Unknwon/goconfig
+```
+
+We use `goconfig` package, since it satisfy my requirement that can get value and setup default value.
+
+```
+package main
+
+import (
+    "fmt"
+    "github.com/Unknwon/goconfig"
+)
+
+var cfg *goconfig.ConfigFile
+
+func init() {
+    //  cfg, _ := goconfig.LoadConfigFile("./conf.ini")
+    cfg, _ = goconfig.LoadConfigFile("./conf.ini")
+    cfg.MustValue("server", "address", "localhost")
+}
+
+func main() {
+
+    value, _ := cfg.GetValue(goconfig.DEFAULT_SECTION, "port")
+    fmt.Println(value)
+    value1, _ := cfg.GetValue("server", "port")
+    fmt.Println(value1)
+    addr, _ := cfg.GetValue("server", "address")
+    fmt.Println(addr)
+    test1()
+
+}
+```
+We declair the cfg as a global variable for multiple go file used.
+Any new go file can use the `cfg.GetValue` directly.
+Furthermore, we load the config file and setup default value in `init()` function.
+
+conf.ini 
+
+```
+port=8000
+[server]
+port=8081
+address= 192.168.33.11
+```
+
+In the field without section `[]`, we use `goconfig.DEFAULT_SECTION`.
+If you want to read an existed section, just use "server" in first argument.
+
+
 #Pattern
 
 ## Yeild Patten
