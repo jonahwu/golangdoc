@@ -52,6 +52,20 @@ c, _ := strconv.ParseFloat(a, 64)
 ```
 
 
+### Time.Duration
+
+```
+    sec, _ := cfg.Int64("token", "expiretime")
+    //sec:=10
+    expireTime := client.CreateInOrderOptions{TTL: time.Duration(time.Second * time.Duration(sec))}`
+    //expireTime := client.CreateInOrderOptions{TTL: time.Duration(time.Second * 10)}`
+``
+You can use `time.Second * 10` but you cannot use `time.Second * sec`. 
+You must use `time.Second * time.Duration(sec)`. 
+This is not as trivial as our think.
+
+
+
 ## Json, Marshal, and UnMarshal
 
 ```
