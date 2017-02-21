@@ -124,7 +124,7 @@ var cfg *goconfig.ConfigFile
 func init() {
     //  cfg, _ := goconfig.LoadConfigFile("./conf.ini")
     cfg, _ = goconfig.LoadConfigFile("./conf.ini")
-    cfg.MustValue("server", "address", "localhost")
+    _, _ = cfg.MustValueSet("server", "address", "localhost")
 }
 
 func main() {
