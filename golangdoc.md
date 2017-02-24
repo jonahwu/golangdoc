@@ -59,14 +59,17 @@ c, _ := strconv.ParseFloat(a, 64)
     //sec:=10
     expireTime := client.CreateInOrderOptions{TTL: time.Duration(time.Second * time.Duration(sec))}`
     //expireTime := client.CreateInOrderOptions{TTL: time.Duration(time.Second * 10)}`
-``
+```
 You can use `time.Second * 10` but you cannot use `time.Second * sec`. 
 You must use `time.Second * time.Duration(sec)`. 
 This is not as trivial as our think.
 
 
 
+
+
 ## Json, Marshal, and UnMarshal
+
 
 ```
 package main
@@ -114,6 +117,240 @@ Mention that
  2. `Marshal` will transfer to char 
  3. you must be trasfered to string by using string(char)
  4. you can use []char(string) to trasfer to char for UnMarshal input
+
+
+
+## Channel
+
+###Channel Buffer
+
+Here is the sample code of channel without and with buffer.
+We hope the programe can handle much thoughput than without buffer. 
+
+```
+package main
+
+import (
+    "fmt"
+    //"reflect"
+    "time"
+)
+
+func run(cb chan int) {
+    for {
+        for i := 0; i < 15; i++ {
+            cb <- i
+        }
+        time.Sleep(time.Second * 3)
+        for i := 15; i < 30; i++ {
+            cb <- i
+        }
+
+        time.Sleep(time.Second * 10)
+    }
+}
+
+func send(data int) {
+    fmt.Println("send data:", data)
+}
+func main() {
+    cb := make(chan int, 10)
+    go run(cb)
+    for cbb := range cb { //.where cbb is type of int not chan
+        fmt.Println(cbb)
+        go send(cbb)
+    }
+}
+```
+You can adust `cb := make(chan int, 10)` to set 10 to 1 to be without buffer.
+
+The following is the test of without buffer.
+The throughput is small, shoud be 1, but print is 3. I think it's due to `print` delay.
+
+```
+0
+1
+2
+send data: 2
+send data: 0
+3
+4
+5
+send data: 5
+send data: 1
+send data: 3
+6
+7
+8
+send data: 8
+send data: 4
+send data: 6
+9
+10
+11
+send data: 11
+send data: 7
+send data: 9
+12
+13
+14
+send data: 14
+send data: 10
+send data: 12
+send data: 13
+```
+
+The following is the result of 10. You can see the throughput is ~10.
+The thoughput is much larger.
+
+```
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+send data: 11
+send data: 0
+send data: 1
+send data: 2
+send data: 3
+send data: 4
+send data: 5
+send data: 6
+send data: 7
+send data: 8
+send data: 9
+send data: 10
+12
+13
+14
+send data: 14
+send data: 12
+send data: 13
+```
+The difference is client. When without buffer, client send data, consumer must to read the data.
+After that, the client can send data again, since it's blocked after 1 sending.
+If buffer is setted to 10. Client send 1 data, the consumer is not read the data. The Client can still 
+send 2 data, since the buffer is not filled. It's Nonblocking. If the Consumer not read data, the Client 
+will stock on after 10 sending.
+
+You can modify the code to `sending data` in `run` function, and adding sleep before `for` loop,
+
+```
+sending data 0
+sending data 1
+sending data 2
+sending data 3
+sending data 4
+sending data 5
+sending data 6
+sending data 7
+sending data 8
+sending data 9
+0
+sending data 10
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+```
+You will see the consumer is not active, since it's in sleep, but the client keep sending data.
+until the channel filled, and it is then blocked.
+
+However, `go send(cbb)` is must have, or the function will be blocked. 
+It does not change the code style, but it really changes the throughput and performance.
+
+## Return Interface
+
+```
+func getUserInfo(kAPI client.KeysAPI, username string, usertype string) (string, error) {
+    //userinfo := AuthInfo{}
+    userinfo := map[string]interface{}{}
+    
+    if usertype == "UserID" {
+        return fmt.Sprintf("%v", userinfo[usertype]), nil
+    }
+    return "", errors.New("not on the right target of userinfo")
+
+}
+```
+Do not return `userinfo[usertype]` directly, since our return is string.  
+So we have to convert the interface to string by using `fmt.Sprintf` with `%v`, as `fmt.Sprintf("%v", userinfo[usertype])`.
+
+## Access Json
+
+How to access Json.
+We might declair a Json struct as followed,
+
+```
+type AuthInfo struct {
+    UserName string `json:"username"`
+    Password string `json:"password"`
+    UserID   string `json:"userid"`
+    Email    string `json:"email"`
+}
+```
+And how to access it ?
+
+```
+Auth.UserName (v)
+Auth["UserName"] (X)
+```
+You can not accees it as an indexing.
+It's so bad ......
+
+
+
+## How To Call By Name
+
+How to call a struct and its function by a variable.
+It's quite important since sometime you wrote a highly abstract code. 
+我們常常需要call不同的Method透過外部傳入的參數，透過`reflect`與`MethodByName`如下的方式即可成功。
+
+```
+package main
+
+import (
+    "fmt"
+    "reflect"
+)
+
+type aa struct {
+    ff int
+}
+
+// remember you have use Capital
+func (c *aa) Show1() (int, error) {
+    fmt.Println("now in show")
+    fmt.Println(c.ff)
+    a := 2
+    return a, nil
+}
+
+func main() {
+    var t aa
+    s := "Show1"
+    aa := reflect.ValueOf(&t).MethodByName(s).Call([]reflect.Value{})
+    fmt.Println("result", aa[0], aa[1])
+   
+```
+
+Now you will see the aa[0]=2, and aa[1]=nil.
+But the method cannot use in `interface`. 
 
 
 ## Load Config
@@ -168,6 +405,166 @@ address= 192.168.33.11
 
 In the field without section `[]`, we use `goconfig.DEFAULT_SECTION`.
 If you want to read an existed section, just use "server" in first argument.
+
+
+## Function
+
+Note that, what is the difference between `(a aa)` and `(a *aa)`.
+
+```
+type aa struct {
+    s float64
+}
+
+func (a aa) Reset1() {
+    a.s = 0.0
+}
+func (a *aa) Reset2() {
+    a.s = 0.0
+}
+
+func main() {
+    sa := aa{}
+    sa.s = 1
+    fmt.Println(sa.s) //1
+    sa.Reset1()   
+    fmt.Println(sa.s)  //1
+    sa.Reset2()  
+    fmt.Println(sa.s)  //0
+
+}
+```
+`Reset1` will not reset, since `a aa` is copy on value definition.  
+`Reset2` will reset, since `a *aa` is a pointer.  
+It's greate thing? 
+But if you really understand and accept it, it will make you less bug and trouble, since you know what 
+you were doing.   
+
+
+
+
+## HTTPRouter and Alice
+
+```
+import(
+    "github.com/gorilla/context"
+)
+
+
+func wrapHandler(h http.Handler) httprouter.Handle {
+    return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+        context.Set(r, "params", ps)
+        h.ServeHTTP(w, r)
+    }
+}
+
+
+func GetUserINFOHandler(w http.ResponseWriter, r *http.Request) {
+    //token := r.Header.Get("Auth-Token")
+    // the following is for general used
+    var params httprouter.Params
+    if ps := context.Get(r, "params"); ps != nil {
+        params = ps.(httprouter.Params) // this is part I hate about gorilla
+    }
+    fmt.Println("userinfo para", params.ByName("info"))
+    // the above is for general used
+
+}
+
+
+router.GET("/getuserinfo/:info", wrapHandler(commonHandlers.ThenFunc(GetUserINFOHandler)))
+```
+The url with `info` parameter, and working on `GetUserINFOHandler` to obtain the `info` parameters as `params.ByName("info")`
+
+
+##Interface
+
+### Send Arbitrary Type and Return Arbatrary Type
+
+```
+import (
+    "fmt"
+    "reflect"
+)
+
+func retarb(it interface{}) interface{} {
+    fmt.Println(reflect.TypeOf(it))  // related to input type, string or float64
+    if fmt.Sprintf("%v", reflect.TypeOf(it)) == "string" {
+        return "3"
+    }
+    if fmt.Sprintf("%v", reflect.TypeOf(it)) == "float64" {
+        return 3.14
+    }
+    return nil
+}
+
+func main() {
+
+    arb := retarb("3")
+    fmt.Println("result sting", reflect.TypeOf(arb))  //string
+
+    ii := retarb(3.14)
+    fmt.Println("result float", reflect.TypeOf(ii))  //float64
+}
+```
+If you are trying to abstract your function. You might send an arbitrary type of data
+and return related response.  Try above code.
+
+However You can not use `3+ii`, it will cast the error
+
+```
+mismatched types int and interface {}
+```
+You must write as followed, the ii is not real `float64` type, although `reflect.TypeOf` shows `float64`.
+
+```
+3+ii.(float64)
+```
+That means, it had better to return same type of a interface, such as float64.
+said `func retarb(it interface{}) float64 {`
+
+###型別轉換
+如果in是interface，並為float64的值。
+用如下方式轉換。
+
+```
+a:=in.(float64)
+```
+為什麼要轉換？因為不轉換他是沒辦法做相加的動作，如前一章節說的
+
+```
+mismatched types int and interface {}
+```
+
+
+
+有沒有辦法變成這樣
+
+```
+typein:=reflect.TypeOf(in)
+a:=in(typea)
+```
+答案是不行的。
+如果要高度抽象你的程式，只能用如下方式
+
+```
+    switch t := t.(type) {
+    default:
+        fmt.Printf("unexpected type %T\n", t) // %T prints whatever type t has
+    case bool:
+        fmt.Printf("boolean %t\n", t) // t has type bool
+    case int:
+        fmt.Printf("integer %d\n", t) // t has type int
+    case string:
+        fmt.Printf("string  %s\n", t) // t has type *bool
+    case *int:
+        fmt.Printf("pointer to integer %d\n", *t) // t has type *int
+    }
+```
+透過`switch type`的方式完成，你想要的轉換。
+
+
+
 
 
 #Pattern
